@@ -48,11 +48,11 @@ and edit with(where USER is your user name, And -X is either -a for Alsa or -p f
 #!/bin/bash
 sleep 5 &&  python3 /home/USER/MidiDev/midi2vol.py -X |&  tee -a /home/USER/MidiDev/midi2vol.log;
 ```
-Then crontab -e
+Then ```crontab -e``` and paste this(remember to edit USER with your user name):
 ```
-@reboot bash /home/jesus/MidiDev/midi2vol.sh
+@reboot bash /home/USER/MidiDev/midi2vol.sh
 ```
-And last add your user to the audio group:
+And last add your user to the audio group (remember to edit USER with your user name):
 ```
 sudo usermod -a -G audio USER
 ```
