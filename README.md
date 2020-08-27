@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol/master/ReadResources/NanoSlider.png" width="180">  <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol/master/ReadResources/NanoBento.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol/master/ReadResources/NanoWavez.png" width="180">
 
-Linux Volume Control for Nano. Slider , ALSA and Pulse compatible
+Linux Volume Control for Nano. Slider , ALSA and Pulse compatible -- [Windows](https://github.com/jesusvallejo/Midi2Vol)
 
 
 This is mainly developed for Nano. Slider, but it can be fairly easily used with any Midi based potentiometer. 
