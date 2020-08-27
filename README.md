@@ -24,3 +24,36 @@ TODO
 - [ ] Add Hot-Plug support
 - [ ] Test stability
 - [ ] Allow control when changing audio output Devices
+
+
+
+How to install
+
+Install git & python3 & pip3
+```
+sudo apt install git python3 python3-pip
+```
+Import repository(on /home/USER directory , where USER is your user name)
+```
+git clone https://github.com/jesusvallejo/Midi2Vol-Linux/
+```
+Install requirements
+```
+cd /home/USER/MidiDev/
+pip3 install requirements.txt
+```
+To launch on boot create a file called midi2vol.sh
+and edit with(where USER is your user name, And -X is either -a for Alsa or -p for Pulse edit accordingly):
+```
+#!/bin/bash
+sleep 5 &&  python3 /home/USER/MidiDev/midi2vol.py -X |&  tee -a /home/USER/MidiDev/midi2vol.log;
+```
+Then crontab -e
+```
+@reboot bash /home/jesus/MidiDev/midi2vol.sh
+```
+And last add your user to the audio group:
+```
+sudo usermod -a -G audio USER
+```
+PS: I could not make it work as a service, still working on it
