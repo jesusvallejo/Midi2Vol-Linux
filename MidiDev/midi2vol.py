@@ -5,6 +5,7 @@ import math
 import time
 import pulsectl
 import alsaaudio
+import json
 
 def openNano(midi_in):
 	count = 0
@@ -23,7 +24,8 @@ def execution(midi_in,sinkType):
 		while True:
 			midiMessage= midi_in.get_message()
 			if midiMessage: 										# if rtmidi gives None as a message , sleep the thread to avoid overloading cpu
-	 	 		message,time_stamp = midiMessage 					# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
+	 	 		message,time_stamp = midiMessage					# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
+	 	 		applicationRaw=message[1]					        # gives option to change volume of source ex: Spotify , Chrome, etc.
 	  			volumeRaw = message[2] 								# Message is an array in wich the third argument is the value of the potentiometer slider from 0 to 127
 	  			if volumeRaw != oldVolumeRaw: 						# check if slider positon has changed
 	  				oldVolumeRaw= volumeRaw 						#update value for next iteration
@@ -42,15 +44,45 @@ def execution(midi_in,sinkType):
 	  							paready = True
 	  						else:
 	  							print('Pulse audio not ready')
-	  					else: 										#if server is ready change volume with pulse
-	  						volume = math.floor((volumeRaw/3)*2.38)/100 
-	  						with pulsectl.Pulse('event-printer') as pulse:
-	  							for sink in pulse.sink_list():
-	  								pulse.volume_set_all_chans(sink, volume)
+	  					else: 										#if PulseAudio server is ready change volume with pulse
+	  						pulseSink(midi_in,applicationRaw,volumeRaw)
+	  					
 			time.sleep(0.01)
 	else:
 		print('could not open nano. slider midi interface')
 
+
+
+def pulseSink(MidiIn,applicationRaw,volumeRaw):
+	volume = math.floor((volumeRaw/3)*2.38)/100 
+	with pulsectl.Pulse('event-printer') as pulse:
+		with open('config.json') as f:
+			config = json.load(f)
+			default = config['default']
+			if (hex(applicationRaw)== default['AppRaw']):
+				pulseAllSink(volume,pulse)
+			else:
+				pulseApp(volume,pulse,applicationRaw,config)
+
+
+def pulseAllSink(volume,pulse):
+		for sink in pulse.sink_list():
+	  		pulse.volume_set_all_chans(sink, volume)
+
+def pulseApp(volume,pulse,applicationRaw,config):
+		for app in config['Apps']:
+			if(app['AppRaw'] == hex(applicationRaw)):
+				for source in pulse.sink_input_list():
+		   			name = source.name
+		   			if (name == app['PulseName']): # if sink input exists
+		   				sinkVolume = source.volume
+		   				sinkVolume.value_flat = volume
+		   				pulse.volume_set(source,sinkVolume)
+		   				break
+		   			else:
+		   				print(name)
+		   				print(app['PulseName'])
+	
 
 def main():
 	argv = sys.argv
