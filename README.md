@@ -24,6 +24,7 @@ TODO
 - [ ] Add Hot-Plug support
 - [ ] Test stability
 - [ ] Allow control when changing audio output Devices
+- [x] Allow control per app(Only on Pulse Audio)
 
 
 
