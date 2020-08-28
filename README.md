@@ -8,6 +8,50 @@ Linux Volume Control for Nano. Slider , ALSA and Pulse compatible -- [Windows](h
 This is mainly developed for Nano. Slider, but it can be fairly easily used with any Midi based potentiometer. 
 It is written on python3.
 
+This version has per app control when using pulse, it can be configured via the config.json,to add more apps.For it to work on qmk keymap we have to change some things,instancitate an app variable as 0x3E,``` uint8_t app = 0x3E; ``` , on slider function we have to change midi_send_cc to ```midi_send_cc(&midi_device, 2, app, 0x7F - (analogReadPin(SLIDER_PIN) >> 3));``` and last use the macro utility to change ``` app ``` value to what ever is configured in the config.json
+
+ex:
+```
+uint8_t app = 0x3E;
+
+// Defines the keycodes used by our macros in process_record_user
+enum custom_keycodes {
+    QMKBEST = SAFE_RANGE,
+    SPOTIFY,DISCORD
+};
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+        case SPOTIFY:
+            if (record->event.pressed) {
+                // when keycode SPOTIFY is pressed
+                app= 0x3F;
+            } else {
+                app= 0x3E;
+                // when keycode SPOTIFY is released
+            }
+            break;
+        case DISCORD:
+            if (record->event.pressed) {
+                // when keycode SPOTIFY is pressed
+                app= 0x40;
+            } else {
+                app= 0x3E;
+                // when keycode SPOTIFY is released
+            }
+            break;
+    }
+    return true;
+}
+void slider(void) {
+    if (divisor++) { // only run the slider function 1/256 times it's called
+        return;
+    }
+
+    midi_send_cc(&midi_device, 2, app, 0x7F - (analogReadPin(SLIDER_PIN) >> 3));
+}
+```
+
+
 It is provided as is, and it comes with no guarantee.(see [Licence](https://raw.githubusercontent.com/jesusvallejo/Midi2Vol/master/LICENSE))
 
 Nevertheless any change, update or upgrade is welcomed.
@@ -24,7 +68,7 @@ TODO
 - [ ] Add Hot-Plug support
 - [ ] Test stability
 - [ ] Allow control when changing audio output Devices
-- [x] Allow control per app(Only on Pulse Audio)
+- [x] Allow per App control
 
 
 
