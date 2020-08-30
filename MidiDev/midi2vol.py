@@ -7,9 +7,10 @@ import pulsectl
 import alsaaudio
 import json
 import logging
+import getpass
 from datetime import datetime
 
-defaultfile='config.json'
+defaultfile='/home/jesus/MidiDev/config.json'
 
 
 def openNano(midi_in):
@@ -27,6 +28,7 @@ def openNano(midi_in):
 def execution(midi_in,sinkType,config):
 	oldVolumeRaw = -1
 	paready = False
+	time.sleep(10)													# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
 		while True:
 			midiMessage= midi_in.get_message()
@@ -41,11 +43,12 @@ def execution(midi_in,sinkType,config):
 	  					volume = math.floor((volumeRaw/3)*2.38)
 	  					alsaaudio.Mixer().setvolume(volume) 		# change volume with alsa
 
-	  				elif(sinkType=="pulse"): 						# if pulse audio is chosen values go from 0 to 1 , in 0.01 steps
+	  				elif(sinkType=="pulse"):				# if pulse audio is chosen values go from 0 to 1 , in 0.01 steps
 	  					if(paready==False):							# check if pulse audio server is running or will panick
 	  						stat = os.system('pulseaudio --check')
 	  						if(stat == 0):
 	  							paready = True
+	  							
 	  							logging.debug('midi2vol -p is ready')
 	  						else:
 	  							logging.debug('PulseAudio server is not avaible')
@@ -77,6 +80,8 @@ def pulseAllSink(volume,pulse):
 def pulseApp(volume,pulse,applicationRaw,config):
 	for app in config['Apps']:
 		if(app['AppRaw'] == hex(applicationRaw)):
+			if(pulse.sink_input_list()==[]):
+				logging.debug('no apps playing audio')
 			for source in pulse.sink_input_list():
 		   		name = source.name
 		   		if (name == app['PulseName']): # if sink input exists
@@ -85,6 +90,8 @@ def pulseApp(volume,pulse,applicationRaw,config):
 		   			pulse.volume_set(source,sinkVolume)
 		   			logging.debug('Volume %d set for application %s'%(volume*100,app['name']))
 		   			break
+
+		
 	
 
 def main():
@@ -94,9 +101,11 @@ def main():
 		targetfile = defaultfile
 		for arg in argv:	
 			if(arg == "-d"):
-				logging.basicConfig(filename='midi2vol.log',level=logging.DEBUG)
+				logging.basicConfig(filename='/home/jesus/MidiDev/midi2vol.log',level=logging.DEBUG)
 				logging.debug('----------------------------')
 				logging.debug(datetime.now())
+				logging.debug('----------------------------')
+				logging.debug(getpass.getuser())
 				logging.debug('----------------------------')
 			if(arg =='-t'):
 				targetfile = argv[count+1]
@@ -166,6 +175,54 @@ And last add your user to the audio group:
 
 sudo usermod -a -G audio USER
 
-PS: I could not make it work as a service, still working on it.
+PS: False(I could not make it work as a service, still working on it.)
+    After some time i figured the problem was not running the service as the logged user so:
+
+    Add USER to audio and pulse groups:
+    sudo usermod -a -G audio USER (ex: sudo usermod -a -G audio jesus)
+    sudo usermod -a -G pulse USER (ex: sudo usermod -a -G pulse jesus)
+
+    Add this file
+
+    sudo nano /etc/systemd/system/midi2vol.service
+
+    fill with:
+    --------------------------------
+    [Unit]
+	Description=midi2vol service.
+
+	[Service]
+	User=USER
+	Type=simple
+	ExecStart=/usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
+
+	[Install]
+	WantedBy=multi-user.target
+    --------------------------------
+    EX:   (NOTE IN THE EXAMPLE -d IS ACTIVE, THIS ENABLES LOGGING, REMEMBER CHANGING THE PATH ON THE CODE OR IT WONT HAVE RIGHTS TO DO SO)
+    --------------------------------
+    [Unit]
+	Description=midi2vol service.
+
+	[Service]
+	User=jesus
+	Type=simple
+	ExecStart=/usr/bin/python3 /home/jesus/MidiDev/midi2vol.py -p -d
+
+
+	[Install]
+	WantedBy=multi-user.target
+    --------------------------------
+	
+    sudo systemctl daemon-reload
+    sudo systemctl start midi2vol.service 
+    sudo systemctl status midi2vol.service (if everything ok continue)
+    sudo systemctl enable midi2vol.service (this makes it run each boot)
+
+    If you are on a Ubuntu distro(or based on it ex: elementary os), you can make it easier by System settings/Applications/Startup/+ and add to
+    box 'Type in a custom command' and type   /usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
+
+
+
 
 """
