@@ -10,8 +10,9 @@ import logging
 import getpass
 from datetime import datetime
 
-defaultfile='/home/jesus/MidiDev/config.json'
-
+defaultConfigFile='config.json'
+defaultLogginFile= 'midi2vol.log'
+defaultPath='/home/jesus/MidiDev/'
 
 def openNano(midi_in):
 	count = 0
@@ -98,10 +99,10 @@ def main():
 	argv = sys.argv
 	if (len(argv)>1):
 		count=0
-		targetfile = defaultfile
+		targetfile = defaultPath + defaultConfigFile
 		for arg in argv:	
 			if(arg == "-d"):
-				logging.basicConfig(filename='/home/jesus/MidiDev/midi2vol.log',level=logging.DEBUG)
+				logging.basicConfig(filename=defaultPath+defaultLogginFile,level=logging.DEBUG)
 				logging.debug('----------------------------')
 				logging.debug(datetime.now())
 				logging.debug('----------------------------')
@@ -187,7 +188,7 @@ PS: False(I could not make it work as a service, still working on it.)
     sudo nano /etc/systemd/system/midi2vol.service
 
     fill with:
-    --------------------------------
+    --------------------------------     
     [Unit]
 	Description=midi2vol service.
 
