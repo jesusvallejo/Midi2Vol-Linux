@@ -103,7 +103,7 @@ sudo usermod -a -G audio USER
 ```
 PS: ~~I could not make it work as a service, still working on it~~
 
-After some time i figured the problem was not running the service as the logged user so:
+After some time i figured out the problem was not running the service as the logged user so:
 Add USER to audio and pulse groups:
 ```
 sudo usermod -a -G audio USER
