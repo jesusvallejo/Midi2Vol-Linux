@@ -101,29 +101,30 @@ And last add your user to the audio group (remember to edit USER with your user 
 ```
 sudo usermod -a -G audio USER
 ```
-PS: I could not make it work as a service, still working on it
-
-
+PS: ~~I could not make it work as a service, still working on it~~
 
 After some time i figured the problem was not running the service as the logged user so:
-
 Add USER to audio and pulse groups:
-    ```
-    sudo usermod -a -G audio USER
-    sudo usermod -a -G pulse USER 
-    ```
+```
+sudo usermod -a -G audio USER
+```
+```
+sudo usermod -a -G pulse USER 
+```
 Example:
-    ```
-     sudo usermod -a -G audio jesus
-     sudo usermod -a -G pulse jesus
-    ```
+```
+sudo usermod -a -G audio jesus
+```
+```
+sudo usermod -a -G pulse jesus
+```
 Add this file:
-    ```
-    sudo nano /etc/systemd/system/midi2vol.service
-    ```
+```
+sudo nano /etc/systemd/system/midi2vol.service
+```
 Fill with:
-    ```
-    [Unit]
+```
+    	[Unit]
 	Description=midi2vol service.
 
 	[Service]
@@ -133,10 +134,10 @@ Fill with:
 
 	[Install]
 	WantedBy=multi-user.target
-    ```
+```
 EX:   (NOTE IN THE EXAMPLE -d IS ACTIVE, THIS ENABLES LOGGING, REMEMBER CHANGING THE PATH ON THE CODE OR IT WONT HAVE RIGHTS TO DO SO)
-    ```
-    [Unit]
+```
+    	[Unit]
 	Description=midi2vol service.
 
 	[Service]
@@ -146,14 +147,22 @@ EX:   (NOTE IN THE EXAMPLE -d IS ACTIVE, THIS ENABLES LOGGING, REMEMBER CHANGING
     
 	[Install]
 	WantedBy=multi-user.target
-    ```
+```
 Reload and start
-	```
-    sudo systemctl daemon-reload
-    sudo systemctl start midi2vol.service 
-    sudo systemctl status midi2vol.service (if everything ok continue)
-    sudo systemctl enable midi2vol.service (this makes it run each boot)
-    ```
+```
+sudo systemctl daemon-reload
+```
+```
+ sudo systemctl start midi2vol.service 
+```
+```
+sudo systemctl status midi2vol.service (if everything ok continue)
+```
+```
+sudo systemctl enable midi2vol.service (this makes it run each boot)
+```
 If you are on a Ubuntu distro(or based on it ex: elementary os), you can make it easier by System settings/Applications/Startup/+ and type in
-box 'Type in a custom command':   
-    ```/usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p```
+box 'Type in a custom command':
+```
+/usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
+```
