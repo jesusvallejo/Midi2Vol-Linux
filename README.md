@@ -166,3 +166,22 @@ box 'Type in a custom command':
 ```
 /usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
 ```
+
+
+
+Some Q/A regarding code:
+
+Why is there two time.sleep()?
+- Well , first one time.sleep(10) helps to let (what i think) pulse audio completely init and avoid not having per app volume control,
+to this moment i still dont know why this happens but 10 seconds at start up not having volume control with the nano. slider seems a good trade for 
+having per app volume control(will implement a flag so its only when per app control is wanted), and the second one is to avoid wasting cpu when 
+theres no actual change on the nano slider potentiometer.
+
+Can i make my own .json?
+- Yes of course you can as long as it parses and follows the default one,pretty easy to add/delete apps. Remember that your keymap has to send the 
+correct hex to work. Also if you loose it the file will be auto generated, and in case it does not work it will make a .bak before creating a new working one.
+
+Does alsa work as pulse?
+- Yes and no, alsa only has default device control, and pulse has all sink control and per app control, which means even if you change the output device will work, it wont with alsa.
+
+
