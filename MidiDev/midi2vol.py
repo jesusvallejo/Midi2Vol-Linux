@@ -15,50 +15,63 @@ defaultLogginFile= 'midi2vol.log'
 defaultPath='/home/jesus/MidiDev/'
 
 def openNano(midi_in):
+    count=nanoIsConnected(midi_in) # returns true if port is correctly opened, false if not
+    if (count!=-1):
+    	midi_in.open_port(count)
+    	logging.debug('openNano: opened port successfully')
+    	return True
+    else:
+    	logging.debug('openNanoError: could not find nano. slider')
+    	return False 
+
+def nanoIsConnected(midi_in):                 #if nano is conected returns position in list, if not returns -1
 	count = 0
 	for port_name in midi_in.get_ports():
-		if (port_name.split(":")[0] == "nano. slider"): 		   #try to connect to nano. slider 
-			midi_in.open_port(count)
-			logging.debug('nano. slider found')
-			return True
+		if (port_name.split(":")[0] == "nano. slider"):
+		    logging.debug('nano. slider found')
+		    return count
 		else:
 			count = count + 1
 	logging.debug('could not find nano. slider')
-	return False
+	return -1
+
 
 def execution(midi_in,sinkType,config):
 	oldVolumeRaw = -1
 	paready = False
-	time.sleep(10)													# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
-		while True:
+		while (nanoIsConnected(midi_in) != -1):
 			midiMessage= midi_in.get_message()
-			if midiMessage: 										# if rtmidi gives None as a message , sleep the thread to avoid overloading cpu
+			if (midiMessage): 										# if rtmidi gives None as a message , sleep the thread to avoid overloading cpu
 	 	 		message,time_stamp = midiMessage					# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
 	 	 		applicationRaw=message[1]					        # gives option to change volume of source ex: Spotify , Chrome, etc.
 	  			volumeRaw = message[2] 								# Message is an array in wich the third argument is the value of the potentiometer slider from 0 to 127
-	  			if volumeRaw != oldVolumeRaw: 						# check if slider positon has changed
+	  			if (volumeRaw != oldVolumeRaw): 						# check if slider positon has changed
 	  				oldVolumeRaw= volumeRaw 						#update value for next iteration
-
 	  				if(sinkType=="alsa"):							# if alsa is chosen values go from 0 to 100
 	  					volume = math.floor((volumeRaw/3)*2.38)
 	  					alsaaudio.Mixer().setvolume(volume) 		# change volume with alsa
 
-	  				elif(sinkType=="pulse"):				# if pulse audio is chosen values go from 0 to 1 , in 0.01 steps
+	  				elif(sinkType=="pulse"):						# if pulse audio is chosen values go from 0 to 1 , in 0.01 steps
 	  					if(paready==False):							# check if pulse audio server is running or will panick
 	  						stat = os.system('pulseaudio --check')
 	  						if(stat == 0):
 	  							paready = True
-	  							
 	  							logging.debug('midi2vol -p is ready')
 	  						else:
 	  							logging.debug('PulseAudio server is not avaible')
-	  					else:	 									#if PulseAudio server is ready change volume with pulse
+	  					else:
+	  						logging.debug('llamada a pulse')	 					#if PulseAudio server is ready change volume with pulse
 	  						pulseSink(midi_in,applicationRaw,volumeRaw,config)
-	  					
 			time.sleep(0.01)
-	else:
-		logging.debug('could not open nano. slider midi interface')
+	logging.debug('executionError: could find nano. slider midi interface')
+	if (midi_in.is_port_open()):
+		midi_in.close_port()
+	while (nanoIsConnected(midi_in)==-1):
+			time.sleep(0.2) # to not overflow the recursion stack
+	execution(midi_in,sinkType,config)
+
+
 
 
 def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
@@ -69,8 +82,6 @@ def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
 					pulseAllSink(volume,pulse)
 				else:
 					pulseApp(volume,pulse,applicationRaw,config)
-
-
 
 
 def pulseAllSink(volume,pulse):
@@ -135,6 +146,7 @@ def main():
 		for arg in argv:
 			if(arg== "--pulse" or arg== "-p"):
 				try:
+					time.sleep(10)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
 					execution(midi_in,"pulse",config)
 				except:
@@ -177,7 +189,7 @@ And last add your user to the audio group:
 sudo usermod -a -G audio USER
 
 PS: False(I could not make it work as a service, still working on it.)
-    After some time i figured the problem was not running the service as the logged user so:
+    After some time i figured out the problem was not running the service as the logged user so:
 
     Add USER to audio and pulse groups:
     sudo usermod -a -G audio USER (ex: sudo usermod -a -G audio jesus)
