@@ -65,7 +65,7 @@ This project uses the following libraries:
 TODO
 - [x] Add auto launch on boot
 - [ ] Proper installer
-- [ ] Add Hot-Plug support
+- [x] Add Hot-Plug support
 - [ ] Test stability
 - [ ] Allow control when changing audio output Devices
 - [x] Allow per App control
