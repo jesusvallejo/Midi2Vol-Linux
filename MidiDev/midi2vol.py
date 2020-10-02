@@ -8,26 +8,42 @@ import alsaaudio
 import json
 import logging
 import getpass
-import notify2
+import subprocess
+import shutil
 from datetime import datetime
+
 
 
 defaultConfigFile='config.json'
 defaultLogginFile= 'midi2vol.log'
-defaultPath='/home/jesus/MidiDev/'
-icon='NanoSlider.png'
-iconDis='NanoSliderDis.png'
+defaultPath='/home/jesus/MidiDev/dev/'
+iconCon_img='NanoSlider.png'
+iconDis_img='NanoSliderDis.png'
+elementaryOS=True
+eOS_iconPath="/home/jesus/.local/share/icons/"
+
+if elementaryOS==True:
+	if os.path.isfile(eOS_iconPath+iconCon_img) == False:
+		shutil.copyfile(os.path.join(defaultPath,iconCon_img), os.path.join(eOS_iconPath,iconCon_img))
+	if os.path.isfile(eOS_iconPath+iconDis_img) == False:
+		shutil.copyfile(os.path.join(defaultPath,iconDis_img), os.path.join(eOS_iconPath,iconDis_img))
 
 def sendmessage(status):
-	notify2.init('midi2vol')
-	iconMessage = os.path.join(defaultPath,icon)
-	iconDisMessage = os.path.join(defaultPath,iconDis)
-	notice = notify2.Notification('midi2vol')
+	title='midi2vol'
+	text=''
+	iconCon = os.path.join(defaultPath,iconCon_img)
+	iconDis = os.path.join(defaultPath,iconDis_img)
 	if(status =='connected'):
-		notice.update('midi2vol',message='nano. slider is ready',icon=iconMessage)
+		text='nano. slider is ready'
+		img = iconCon
+		if(elementaryOS):
+			img= "NanoSlider"
 	elif(status == 'disconnected'):
-		notice.update('midi2vol',message='nano. slider is not present',icon=iconDisMessage)
-	notice.show()
+		text='nano. slider is not present'
+		img = iconDis
+		if(elementaryOS):
+			img= "NanoSliderDis"
+	subprocess.Popen(["notify-send", "-i", img, title, text])
 	return
 
 def openNano(midi_in):
@@ -128,10 +144,10 @@ def main():
 	argv = sys.argv
 	if (len(argv)>1):
 		count=0
-		targetfile = defaultPath + defaultConfigFile
+		targetfile = os.path.join(defaultPath,defaultConfigFile)
 		for arg in argv:	
 			if(arg == "-d"):
-				logging.basicConfig(filename=defaultPath+defaultLogginFile,level=logging.DEBUG)
+				logging.basicConfig(filename=os.path.join(defaultPath,defaultLogginFile),level=logging.DEBUG)
 				logging.debug('----------------------------')
 				logging.debug(datetime.now())
 				logging.debug('----------------------------')
