@@ -38,7 +38,34 @@ def eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img):
 	if os.path.isfile(os.path.join(eOS_iconPath,iconDis_img)) == False:
 		shutil.copyfile(os.path.join(defaultPath,iconDis_img), os.path.join(eOS_iconPath,iconDis_img))
 
+def bento():
+	global iconCon_img
+	global iconDis_img
+	iconCon_img = 'NanoBento.png'
+	iconDis_img = 'NanoBentoDis.png'
+	if elementaryOS == True:
+		eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
+	return
 
+def wavez():
+	global iconCon_img
+	global iconDis_img
+	iconCon_img = 'NanoWavez.png'
+	iconDis_img = 'NanoWavezDis.png'
+	if elementaryOS == True:
+		eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
+	return
+
+	
+
+def mizu():
+	global iconCon_img
+	global iconDis_img
+	iconCon_img = 'NanoMizu.png'
+	iconDis_img = 'NanoMizuDis.png'
+	if elementaryOS == True:
+		eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
+	return
 
 
 # def pulseIconDis(icon_img):
@@ -173,6 +200,12 @@ def main():
 		count=0
 		targetfile = os.path.join(defaultPath,defaultConfigFile)
 		for arg in argv:
+			if(arg == '--bento'):
+				bento()
+			if(arg == '--wavez'):
+				wavez()
+			if(arg == '--mizu'):
+				mizu()
 			if(arg == "-e"):
 				eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
 			if(arg == "-d"):
