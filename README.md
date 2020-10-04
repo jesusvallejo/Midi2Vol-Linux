@@ -10,13 +10,16 @@ This is mainly developed for Nano. Slider, but it can be fairly easily used with
 It is written on python3.
 
 Options:
--p --> Pulse
--a --> Alsa
--d --> debug mode(produces a .log)
--e --> Elementary OS mode(Icons work different on Elementary OS)
---bento --> NanoBento Notification Icon
---wavez --> NanoWavez Notification Icon
---mizu --> NanoMizu Notification Icon
+
+Command       | Info
+------------- | -------------
+-p  	      | Pulse
+-a            | Alsa
+-d            | Debug mode(produces a .log)
+-e            | Elementary OS mode(Icons work different on Elementary OS)
+--bento       | NanoBento Notification Icon
+--wavez       | NanoWavez Notification Icon
+--mizu        | NanoMizu Notification Icon
 
 
 This version has per app control when using pulse, it can be configured via the config.json,to add more apps.For it to work on qmk keymap we have to change some things,instancitate an app variable as 0x3E,``` uint8_t app = 0x3E; ``` , on slider function we have to change midi_send_cc to ```midi_send_cc(&midi_device, 2, app, 0x7F - (analogReadPin(SLIDER_PIN) >> 3));``` and last use the macro utility to change ``` app ``` value to what ever is configured in the config.json
