@@ -1,6 +1,6 @@
 # Midi2Vol-Linux
 
-<img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoSlider.png" width="180">  <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoBento.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoWavez.png" width="180"><img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoMizu.png" width="180">
+<img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoSlider.png" width="180">  <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoBento.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoWavez.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoMizu.png" width="180">
 
 
 Linux Volume Control for Nano. Slider , ALSA and Pulse compatible -- [Windows](https://github.com/jesusvallejo/Midi2Vol)
