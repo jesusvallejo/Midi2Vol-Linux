@@ -11,25 +11,52 @@ import getpass
 import subprocess
 import shutil
 from datetime import datetime
+#import pystray
+#from PIL import Image, ImageDraw
 
+# paths
+defaultPath=os.path.dirname(os.path.realpath(__file__)) #  to force the location os.path.expanduser('~/MidiDev/')
+eOS_iconPath=os.path.expanduser('~/.local/share/icons/')
 
-
+# filenames
+filename=os.path.splitext(os.path.basename(__file__))[0]
 defaultConfigFile='config.json'
-defaultLogginFile= 'midi2vol.log'
-defaultPath='/home/jesus/MidiDev/dev/'
+defaultLogginFile=filename+'.log'# to force a logging name 'midi2vol.log'
 iconCon_img='NanoSlider.png'
 iconDis_img='NanoSliderDis.png'
-elementaryOS=True
-eOS_iconPath="/home/jesus/.local/share/icons/"
 
-if elementaryOS==True:
-	if os.path.isfile(eOS_iconPath+iconCon_img) == False:
+# flags
+elementaryOS=False
+
+
+
+def eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img):
+	global elementaryOS
+	elementaryOS = True
+	if os.path.isfile(os.path.join(eOS_iconPath,iconCon_img)) == False:
 		shutil.copyfile(os.path.join(defaultPath,iconCon_img), os.path.join(eOS_iconPath,iconCon_img))
-	if os.path.isfile(eOS_iconPath+iconDis_img) == False:
+	if os.path.isfile(os.path.join(eOS_iconPath,iconDis_img)) == False:
 		shutil.copyfile(os.path.join(defaultPath,iconDis_img), os.path.join(eOS_iconPath,iconDis_img))
 
+
+
+
+# def pulseIconDis(icon_img):
+# 	width=12
+# 	height=12
+# 	image = Image.open(icon_img)
+# 	icon = pystray.Icon("midi2vol", image)
+# 	return icon
+
+# def runIcon(icon):
+# 	icon.run()
+# 	icon.visible = True
+
+
+
+
+
 def sendmessage(status):
-	title='midi2vol'
 	text=''
 	iconCon = os.path.join(defaultPath,iconCon_img)
 	iconDis = os.path.join(defaultPath,iconDis_img)
@@ -43,7 +70,7 @@ def sendmessage(status):
 		img = iconDis
 		if(elementaryOS):
 			img= "NanoSliderDis"
-	subprocess.Popen(["notify-send", "-i", img, title, text])
+	subprocess.Popen(["notify-send", "-i", img, filename, text])
 	return
 
 def openNano(midi_in):
@@ -117,7 +144,6 @@ def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
 				else:
 					pulseApp(volume,pulse,applicationRaw,config)
 
-
 def pulseAllSink(volume,pulse):
 	for sink in pulse.sink_list():
 		pulse.volume_set_all_chans(sink, volume)
@@ -145,7 +171,9 @@ def main():
 	if (len(argv)>1):
 		count=0
 		targetfile = os.path.join(defaultPath,defaultConfigFile)
-		for arg in argv:	
+		for arg in argv:
+			if(arg == "-e"):
+				eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
 			if(arg == "-d"):
 				logging.basicConfig(filename=os.path.join(defaultPath,defaultLogginFile),level=logging.DEBUG)
 				logging.debug('----------------------------')
