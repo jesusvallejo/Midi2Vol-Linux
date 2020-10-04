@@ -64,12 +64,13 @@ def sendmessage(status):
 		text='nano. slider is ready'
 		img = iconCon
 		if(elementaryOS):
-			img= "NanoSlider"
+			img= os.path.splitext(iconCon_img)[0]
 	elif(status == 'disconnected'):
 		text='nano. slider is not present'
 		img = iconDis
 		if(elementaryOS):
-			img= "NanoSliderDis"
+			img= os.path.splitext(iconDis_img)[0]
+
 	subprocess.Popen(["notify-send", "-i", img, filename, text])
 	return
 
