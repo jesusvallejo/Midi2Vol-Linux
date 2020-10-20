@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw
 # paths
 defaultPath=os.path.dirname(os.path.realpath(__file__)) #  to force the location os.path.expanduser('~/MidiDev/')
 eOS_iconPath=os.path.expanduser('~/.local/share/icons/')
+iconsPath=os.path.join(defaultPath,'icons')
 
 # filenames
 filename=os.path.splitext(os.path.basename(__file__))[0]
@@ -36,9 +37,9 @@ def eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img):
 	global elementaryOS
 	elementaryOS = True
 	if os.path.isfile(os.path.join(eOS_iconPath,iconCon_img)) == False:
-		shutil.copyfile(os.path.join(defaultPath,iconCon_img), os.path.join(eOS_iconPath,iconCon_img))
+		shutil.copyfile(os.path.join(iconsPath,iconCon_img), os.path.join(eOS_iconPath,iconCon_img))
 	if os.path.isfile(os.path.join(eOS_iconPath,iconDis_img)) == False:
-		shutil.copyfile(os.path.join(defaultPath,iconDis_img), os.path.join(eOS_iconPath,iconDis_img))
+		shutil.copyfile(os.path.join(iconsPath,iconDis_img), os.path.join(eOS_iconPath,iconDis_img))
 
 def bento():
 	global iconCon_img
@@ -46,7 +47,7 @@ def bento():
 	iconCon_img = 'NanoBento.png'
 	iconDis_img = 'NanoBentoDis.png'
 	if elementaryOS == True:
-		eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
+		eOSNotification(iconsPath,eOS_iconPath,iconCon_img,iconDis_img)
 	return
 
 def wavez():
@@ -55,7 +56,7 @@ def wavez():
 	iconCon_img = 'NanoWavez.png'
 	iconDis_img = 'NanoWavezDis.png'
 	if elementaryOS == True:
-		eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
+		eOSNotification(iconsPath,eOS_iconPath,iconCon_img,iconDis_img)
 	return
 
 
@@ -65,7 +66,7 @@ def mizu():
 	iconCon_img = 'NanoMizu.png'
 	iconDis_img = 'NanoMizuDis.png'
 	if elementaryOS == True:
-		eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
+		eOSNotification(iconsPath,eOS_iconPath,iconCon_img,iconDis_img)
 	return
 
 
@@ -84,8 +85,8 @@ def sendmessage(status):
 	if(noNotify):
 		return
 	text=''
-	iconCon = os.path.join(defaultPath,iconCon_img)
-	iconDis = os.path.join(defaultPath,iconDis_img)
+	iconCon = os.path.join(iconsPath,iconCon_img)
+	iconDis = os.path.join(iconsPath,iconDis_img)
 	if(status =='connected'):
 		image=Image.open(iconCon)
 		icon.icon = image
@@ -127,8 +128,8 @@ def nanoIsConnected(midi_in):                 #if nano is connected returns posi
 
 
 def execution(midi_in,sinkType,config):
-	iconCon = os.path.join(defaultPath,iconCon_img)
-	iconDis = os.path.join(defaultPath,iconDis_img)
+	iconCon = os.path.join(iconsPath,iconCon_img)
+	iconDis = os.path.join(iconsPath,iconDis_img)
 	oldVolumeRaw = -1
 	paready = False
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
@@ -196,9 +197,6 @@ def pulseApp(volume,pulse,applicationRaw,config):
 		   			logging.warning('Volume %d set for application %s'%(volume*100,app['name']))
 		   			break
 
-		
-	
-
 def main():
 	argv = sys.argv
 	if (len(argv)>1):
@@ -250,7 +248,7 @@ def main():
 			if(arg== "--pulse" or arg== "-p"):
 				try:
 					global icon
-					icon = trayIcon(os.path.join(defaultPath,iconCon_img))
+					icon = trayIcon(os.path.join(iconsPath,iconCon_img))
 					time.sleep(10)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
 					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",config))
