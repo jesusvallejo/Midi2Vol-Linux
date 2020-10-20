@@ -16,6 +16,7 @@ Command       | Info
 -p  	      | Pulse
 -a            | Alsa
 -d            | Debug mode(produces a .log)
+-t            | Set .json file
 -e            | Elementary OS mode(Icons work different on Elementary OS)
 --bento       | NanoBento Notification Icon
 --wavez       | NanoWavez Notification Icon
