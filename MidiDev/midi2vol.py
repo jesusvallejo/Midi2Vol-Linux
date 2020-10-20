@@ -8,11 +8,12 @@ import alsaaudio
 import json
 import logging
 import getpass
+import threading
 import subprocess
 import shutil
 from datetime import datetime
-#import pystray
-#from PIL import Image, ImageDraw
+import pystray
+from PIL import Image, ImageDraw
 
 # paths
 defaultPath=os.path.dirname(os.path.realpath(__file__)) #  to force the location os.path.expanduser('~/MidiDev/')
@@ -27,6 +28,7 @@ iconDis_img='NanoSliderDis.png'
 
 # flags
 elementaryOS=False
+noNotify = False
 
 
 
@@ -56,7 +58,6 @@ def wavez():
 		eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
 	return
 
-	
 
 def mizu():
 	global iconCon_img
@@ -68,31 +69,33 @@ def mizu():
 	return
 
 
-# def pulseIconDis(icon_img):
-# 	width=12
-# 	height=12
-# 	image = Image.open(icon_img)
-# 	icon = pystray.Icon("midi2vol", image)
-# 	return icon
-
-# def runIcon(icon):
-# 	icon.run()
-# 	icon.visible = True
-
+def trayIcon(icon_img):
+	global icon
+	width=12
+	height=12
+	image=Image.open(icon_img)
+	icon=pystray.Icon(filename, image)
+	return icon
 
 
 
 
 def sendmessage(status):
+	if(noNotify):
+		return
 	text=''
 	iconCon = os.path.join(defaultPath,iconCon_img)
 	iconDis = os.path.join(defaultPath,iconDis_img)
 	if(status =='connected'):
+		image=Image.open(iconCon)
+		icon.icon = image
 		text='nano. slider is ready'
 		img = iconCon
 		if(elementaryOS):
 			img= os.path.splitext(iconCon_img)[0]
 	elif(status == 'disconnected'):
+		image=Image.open(iconDis)
+		icon.icon = image
 		text='nano. slider is not present'
 		img = iconDis
 		if(elementaryOS):
@@ -105,25 +108,27 @@ def openNano(midi_in):
     count=nanoIsConnected(midi_in) # returns true if port is correctly opened, false if not
     if (count!=-1):
     	midi_in.open_port(count)
-    	logging.debug('openNano: opened port successfully')
+    	logging.warning('openNano: opened port successfully')
     	return True
     else:
     	logging.error('openNanoError: could not find nano. slider')
     	return False
 
-def nanoIsConnected(midi_in):                 #if nano is conected returns position in list, if not returns -1
+def nanoIsConnected(midi_in):                 #if nano is connected returns position in list, if not returns -1
 	count = 0
 	for port_name in midi_in.get_ports():
 		if (port_name.split(":")[0] == "nano. slider"):
-		    #logging.debug('nano. slider found')
+		    #logging.warning('nano. slider found')
 		    return count
 		else:
 			count = count + 1
-	logging.debug('could not find nano. slider')
+	logging.warning('could not find nano. slider')
 	return -1
 
 
 def execution(midi_in,sinkType,config):
+	iconCon = os.path.join(defaultPath,iconCon_img)
+	iconDis = os.path.join(defaultPath,iconDis_img)
 	oldVolumeRaw = -1
 	paready = False
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
@@ -145,11 +150,11 @@ def execution(midi_in,sinkType,config):
 	  						if(stat == 0):
 	  							paready = True
 	  							sendmessage('connected')
-	  							logging.debug('midi2vol -p is ready')
+	  							logging.warning('midi2vol -p is ready')
 	  						else:
-	  							logging.debug('PulseAudio server is not avaible')
+	  							logging.warning('PulseAudio server is not avaible')
 	  					else:
-	  						logging.debug('llamada a pulse')	 					#if PulseAudio server is ready change volume with pulse
+	  						logging.warning('llamada a pulse')	 					#if PulseAudio server is ready change volume with pulse
 	  						pulseSink(midi_in,applicationRaw,volumeRaw,config)
 			time.sleep(0.01)
 	logging.error('executionError: could find nano. slider midi interface')
@@ -175,20 +180,20 @@ def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
 def pulseAllSink(volume,pulse):
 	for sink in pulse.sink_list():
 		pulse.volume_set_all_chans(sink, volume)
-	logging.debug('Volume %d set for all sinks'%(volume*100))
+	logging.warning('Volume %d set for all sinks'%(volume*100))
 
 def pulseApp(volume,pulse,applicationRaw,config):
 	for app in config['Apps']:
 		if(app['AppRaw'] == hex(applicationRaw)):
 			if(pulse.sink_input_list()==[]):
-				logging.debug('no apps playing audio')
+				logging.warning('no apps playing audio')
 			for source in pulse.sink_input_list():
 		   		name = source.name
 		   		if (name == app['PulseName']): # if sink input exists
 		   			sinkVolume = source.volume
 		   			sinkVolume.value_flat = volume
 		   			pulse.volume_set(source,sinkVolume)
-		   			logging.debug('Volume %d set for application %s'%(volume*100,app['name']))
+		   			logging.warning('Volume %d set for application %s'%(volume*100,app['name']))
 		   			break
 
 		
@@ -200,6 +205,8 @@ def main():
 		count=0
 		targetfile = os.path.join(defaultPath,defaultConfigFile)
 		for arg in argv:
+			if(arg == '--noicon'):
+				noNotify = True
 			if(arg == '--bento'):
 				bento()
 			if(arg == '--wavez'):
@@ -209,31 +216,31 @@ def main():
 			if(arg == "-e"):
 				eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img)
 			if(arg == "-d"):
-				logging.basicConfig(filename=os.path.join(defaultPath,defaultLogginFile),level=logging.DEBUG)
-				logging.debug('----------------------------')
-				logging.debug(datetime.now())
-				logging.debug('----------------------------')
-				logging.debug(getpass.getuser())
-				logging.debug('----------------------------')
+				logging.basicConfig(filename=os.path.join(defaultPath,defaultLogginFile),level=logging.WARNING)
+				logging.warning('----------------------------')
+				logging.warning(datetime.now())
+				logging.warning('----------------------------')
+				logging.warning(getpass.getuser())
+				logging.warning('----------------------------')
 			if(arg =='-t'):
 				targetfile = argv[count+1]
-				logging.debug(targetfile)
+				logging.warning(targetfile)
 			count = count+1
 
 		try:
 			with open(targetfile) as f:
 				try:
 					config = json.load(f)
-					logging.debug('%s correctly loaded'%(targetfile))
+					logging.warning('%s correctly loaded'%(targetfile))
 				except:
 					os.rename(os.path.realpath(targetfile), os.path.realpath(targetfile)+".bak")
 					f = open(os.path.realpath(targetfile), "w")
-					logging.debug('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
+					logging.warning('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
 					f.write("{\"default\": {\"AppRaw\":\"0x3e\"},\"Apps\":[{\"name\": \"None\",\"AppRaw\": \"0x00\",\"PulseName\": \"None\"}]}")
 					f.close()
 					main()
 		except:
-			logging.debug('Error loading %s, will create a new one'%(targetfile))
+			logging.warning('Error loading %s, will create a new one'%(targetfile))
 			f= open(targetfile,"w+")
 			f.write("{\"default\": {\"AppRaw\":\"0x3e\"},\"Apps\":[{\"name\": \"None\",\"AppRaw\": \"0x00\",\"PulseName\": \"None\"}]}")
 			f.close()
@@ -242,9 +249,13 @@ def main():
 		for arg in argv:
 			if(arg== "--pulse" or arg== "-p"):
 				try:
+					global icon
+					icon = trayIcon(os.path.join(defaultPath,iconCon_img))
 					time.sleep(10)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
-					execution(midi_in,"pulse",config)
+					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",config))
+					t.start()
+					icon.run()
 				except:
 					logging.exception("Error with rtmidi")
 					sys.exit("Error, check log")  
