@@ -1,6 +1,6 @@
 # Midi2Vol-Linux
 
-<img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoSlider.png" width="180">  <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoBento.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoWavez.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/NanoMizu.png" width="180">
+<img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/icons/NanoSlider.png" width="180">  <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/icons/NanoBento.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/icons/NanoWavez.png" width="180"> <img src="https://raw.githubusercontent.com/jesusvallejo/Midi2Vol-Linux/master/MidiDev/icons/NanoMizu.png" width="180">
 
 
 Linux Volume Control for Nano. Slider , ALSA and Pulse compatible -- [Windows](https://github.com/jesusvallejo/Midi2Vol)
@@ -81,8 +81,8 @@ TODO
 - [x] Add auto launch on boot
 - [ ] Proper installer
 - [x] Add Hot-Plug support
-- [ ] Test stability
-- [ ] Allow control when changing audio output Devices
+- [x] Test stability
+- [x] Allow control when changing audio output Devices(on Pulse only)
 - [x] Allow per App control
 
 
