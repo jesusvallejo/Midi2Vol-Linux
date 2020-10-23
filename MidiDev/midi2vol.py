@@ -26,6 +26,8 @@ defaultConfigFile='config.json'
 defaultLogginFile=filename+'.log'# to force a logging name 'midi2vol.log'
 iconCon_img='NanoSlider.png'
 iconDis_img='NanoSliderDis.png'
+iconCon_tray='TrayWhiteIconCon.png'
+iconDis_tray='TrayWhiteIconDis.png'
 
 # flags
 elementaryOS=False
@@ -87,15 +89,17 @@ def sendmessage(status):
 	text=''
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
+	iconConTray = os.path.join(iconsPath,iconCon_tray)
+	iconDisTray = os.path.join(iconsPath,iconDis_tray)
 	if(status =='connected'):
-		image=Image.open(iconCon)
+		image=Image.open(iconConTray)
 		icon.icon = image
 		text='nano. slider is ready'
 		img = iconCon
 		if(elementaryOS):
 			img= os.path.splitext(iconCon_img)[0]
 	elif(status == 'disconnected'):
-		image=Image.open(iconDis)
+		image=Image.open(iconDisTray)
 		icon.icon = image
 		text='nano. slider is not present'
 		img = iconDis
@@ -248,7 +252,7 @@ def main():
 			if(arg== "--pulse" or arg== "-p"):
 				try:
 					global icon
-					icon = trayIcon(os.path.join(iconsPath,iconCon_img))
+					icon = trayIcon(os.path.join(iconsPath,iconCon_tray))
 					time.sleep(10)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
 					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",config))
