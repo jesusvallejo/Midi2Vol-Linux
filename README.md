@@ -7,7 +7,7 @@ Linux Volume Control for Nano. Slider , ALSA and Pulse compatible -- [Windows](h
 
 
 This is mainly developed for Nano. Slider, but it can be fairly easily used with any Midi based potentiometer. 
-It is written on python3.
+It is written in python3.
 
 Options:
 
