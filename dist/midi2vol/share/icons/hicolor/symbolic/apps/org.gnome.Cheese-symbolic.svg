@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="16px" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+ <filter id="a" x="0%" y="0%" width="100%" height="100%">
+  <feColorMatrix in="SourceGraphic" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/>
+ </filter>
+ <mask id="b">
+  <g filter="url(#a)">
+   <rect width="16" height="16" fill-opacity=".1"/>
+  </g>
+ </mask>
+ <clipPath id="c">
+  <rect width="192" height="152"/>
+ </clipPath>
+ <mask id="d">
+  <g filter="url(#a)">
+   <rect width="16" height="16" fill-opacity=".1"/>
+  </g>
+ </mask>
+ <clipPath id="e">
+  <rect width="192" height="152"/>
+ </clipPath>
+ <g transform="translate(-168 -16)" clip-path="url(#c)" mask="url(#b)">
+  <path d="m102.53 57.355c-11.695-1.4844-19.336 1.0195-25.879 4.418 6.6484-8.3672 14.945-10.984 25.879-4.418z" fill="#12121c" fill-rule="evenodd"/>
+ </g>
+ <g transform="translate(-168 -16)" clip-path="url(#e)" mask="url(#d)">
+  <path d="m38.578 63.035c11.121-3.875 19.125-3.0156 26.242-1.0469-8.2773-6.8008-16.945-7.6406-26.242 1.0469z" fill="#12121c" fill-rule="evenodd"/>
+ </g>
+ <g fill="#241f31">
+  <path d="m2.5625 5.5c1.6992-1.0859 3.3555-1.0938 5 0 0-1.1055-1.1211-2-2.5-2s-2.5 0.89453-2.5 2z"/>
+  <path d="m9 5c1.6992-1.0859 3.3555-1.0938 5 0 0-1.1055-1.1211-2-2.5-2s-2.5 0.89453-2.5 2z"/>
+  <path d="m4 0c-1.0898 0-2 0.91016-2 2v12c0 1.0898 0.91016 2 2 2h6l5-5v-9c0-1.0898-0.91016-2-2-2zm0 2h9v9h-3v3h-6z"/>
+  <path d="m14 5.3281c-4.2812 2.1445-8.3672 2.0703-11 1.6562v2.0312c4.2656 3.0352 8.1016 1.625 11-0.78125z" fill-rule="evenodd"/>
+ </g>
+</svg>

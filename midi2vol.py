@@ -25,6 +25,7 @@ iconsPath=os.path.join(defaultPath,'icons')
 
 # filenames
 filename=os.path.splitext(os.path.basename(__file__))[0]
+defaultAppConfigFile='appConfig.json'
 defaultConfigFile='config.json'
 defaultLogginFile=filename+'.log'# to force a logging name 'midi2vol.log'
 iconCon_img='NanoSlider.png'
@@ -32,7 +33,19 @@ iconDis_img='NanoSliderDis.png'
 iconCon_tray='TrayWhiteIconCon.png'
 iconDis_tray='TrayWhiteIconDis.png'
 
-
+# Default json
+appConfigJson = """ [
+    {"name": "Default","AppRaw": "0x3e","PulseName": "default"},
+    {"name": "Spotify","AppRaw": "0x3f","PulseName": "Spotify"},
+    {"name": "Discord","AppRaw": "0x40","PulseName": "playStream"},
+    {"name": "Google Chrome","AppRaw": "0x41","PulseName": "Playback"},
+    {"name": "Firefox","AppRaw": "0x41","PulseName": "AudioStream"}
+]"""
+configJson = """  {
+    "NotifyStatus": "true",
+    "trayBarIcon": "default",
+    "audioService":"pulse"
+  } """
 # flags
 elementaryOS=False
 noNotify = False
@@ -132,7 +145,7 @@ def nanoIsConnected(midi_in):                 #if nano is connected returns posi
 	return -1
 
 
-def execution(midi_in,sinkType,config):
+def execution(midi_in,sinkType,appConfig):
 	global iconCon,iconDis
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
@@ -163,7 +176,7 @@ def execution(midi_in,sinkType,config):
 	  							logging.warning('PulseAudio server is not avaible')
 	  					else:
 	  						logging.warning('llamada a pulse')	 	# If PulseAudio server is ready change volume with pulse
-	  						pulseSink(midi_in,applicationRaw,volumeRaw,config)
+	  						pulseSink(midi_in,applicationRaw,volumeRaw,appConfig)
          
 			time.sleep(0.01)  										# Sleep thread for a while
    
@@ -174,18 +187,18 @@ def execution(midi_in,sinkType,config):
 		midi_in.close_port()
 	while (nanoIsConnected(midi_in)==-1):							# Actively poll to detect nano slider reconnection
 		time.sleep(0.5) 											# To not overflow the recursion stack
-	execution(midi_in,sinkType,config)								# Nano is now present launch thread
+	execution(midi_in,sinkType,appConfig)								# Nano is now present launch thread
 
 
-def pulseSink(MidiIn,applicationRaw,volumeRaw,config):   			# Checks midi hex against the json
+def pulseSink(MidiIn,applicationRaw,volumeRaw,appConfig):   			# Checks midi hex against the json
 	volume = math.floor((volumeRaw/3)*2.38)/100 
 	with pulsectl.Pulse('event-printer') as pulse:
-				default = config['default']
+				default = appConfig[0]
 				if (hex(applicationRaw)== default['AppRaw']):
 					pulseAllSink(volume,pulse)
 				else:
 					logging.warning('App Volume selected:%s'%(hex(applicationRaw)))
-					pulseApp(volume,pulse,applicationRaw,config)
+					pulseApp(volume,pulse,applicationRaw,appConfig)
 
 
 def pulseAllSink(volume,pulse):											# Changes all output sinks volume
@@ -194,8 +207,8 @@ def pulseAllSink(volume,pulse):											# Changes all output sinks volume
 	logging.warning('Volume %d set for all sinks'%(volume*100))
 
 
-def pulseApp(volume,pulse,applicationRaw,config):						# Controls per app volume using pulse
-	for app in config['Apps']:
+def pulseApp(volume,pulse,applicationRaw,appConfig):						# Controls per app volume using pulse
+	for app in appConfig:
 		if(app['AppRaw'] == hex(applicationRaw)):
 			if(pulse.sink_input_list()==[]):
 				logging.warning('no apps playing audio')
@@ -207,13 +220,57 @@ def pulseApp(volume,pulse,applicationRaw,config):						# Controls per app volume
 		   			pulse.volume_set(source,sinkVolume)
 		   			logging.warning('Volume %d set for application %s: %s'%(volume*100,app['name'],hex(applicationRaw)))
 		   			break
-
+    
+    
+def loadAppConfig(targetfile):
+	try:
+		with open(targetfile) as f:
+			try:
+				global	appConfig
+				appConfig = json.load(f)
+				logging.warning('%s correctly loaded'%(targetfile))
+			except:
+				os.rename(os.path.realpath(targetfile), os.path.realpath(targetfile)+".bak")
+				f = open(os.path.realpath(targetfile), "w")
+				logging.warning('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
+				f.write(appConfigJson)
+				f.close()
+				main()
+	except:
+		logging.warning('Error loading %s, will create a new one'%(targetfile))
+		f= open(targetfile,"w+")
+		f.write(appConfigJson)
+		f.close()
+		main()
+  
+  
+def loadConfig(targetfile):
+	try:
+		with open(targetfile) as f:
+			try:
+				global	config
+				config = json.load(f)
+				logging.warning('%s correctly loaded'%(targetfile))
+			except:
+				os.rename(os.path.realpath(targetfile), os.path.realpath(targetfile)+".bak")
+				f = open(os.path.realpath(targetfile), "w")
+				logging.warning('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
+				f.write(configJson)
+				f.close()
+				main()
+	except:
+		logging.warning('Error loading %s, will create a new one'%(targetfile))
+		f= open(targetfile,"w+")
+		f.write(configJson)
+		f.close()
+		main()
 
 def main():
+	global appConfig , config
 	argv = sys.argv
-	if (len(argv)>1):
+	if (len(argv)>1): 													# console mode
 		count=0
-		targetfile = os.path.join(defaultPath,defaultConfigFile)
+		targetfile = os.path.join(defaultPath,defaultAppConfigFile)
 		for arg in argv:
 			if(arg == '--noicon'):
 				global noNotify
@@ -238,24 +295,7 @@ def main():
 				logging.warning(targetfile)
 			count = count+1
 
-		try:
-			with open(targetfile) as f:
-				try:
-					config = json.load(f)
-					logging.warning('%s correctly loaded'%(targetfile))
-				except:
-					os.rename(os.path.realpath(targetfile), os.path.realpath(targetfile)+".bak")
-					f = open(os.path.realpath(targetfile), "w")
-					logging.warning('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
-					f.write("{\"default\": {\"AppRaw\":\"0x3e\"},\"Apps\":[{\"name\": \"None\",\"AppRaw\": \"0x00\",\"PulseName\": \"None\"}]}")
-					f.close()
-					main()
-		except:
-			logging.warning('Error loading %s, will create a new one'%(targetfile))
-			f= open(targetfile,"w+")
-			f.write("{\"default\": {\"AppRaw\":\"0x3e\"},\"Apps\":[{\"name\": \"None\",\"AppRaw\": \"0x00\",\"PulseName\": \"None\"}]}")
-			f.close()
-			main()
+		loadAppConfig(targetfile)
 
 		for arg in argv:
 			if(arg== "--pulse" or arg== "-p"):
@@ -264,7 +304,7 @@ def main():
 					icon = trayIcon(os.path.join(iconsPath,iconCon_tray))
 					time.sleep(3)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
-					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",config))
+					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",appConfig))
 					t.start()
 					icon.run()
 				except:
@@ -274,15 +314,44 @@ def main():
 			elif(arg== "--alsa" or arg== "-a"):
 				try:
 					midi_in = rtmidi.MidiIn()
-					execution(midi_in,"alsa",config)
+					execution(midi_in,"alsa",appConfig)
 				except:
 					logging.exception("Error with rtmidi")
-					sys.exit("Error, check log")  
+					sys.exit("Error, check log") 
+			else:
+				print("Please call me with a valid argument")
+				print("Unknown argument, For alsa sink use arguments --alsa/-a or --pulse/-p for pulse sink")
+				sys.exit() 
 		
 	else:
-		print("Please call me with a valid argument")
-		print("Unknown argument, For alsa sink use arguments --alsa/-a or --pulse/-p for pulse sink")
-		sys.exit()  
+		targetfile = os.path.join(defaultPath,defaultAppConfigFile)# AppConfig file
+		loadAppConfig(targetfile)
+		targetfile = os.path.join(defaultPath,defaultConfigFile)# AppConfig file
+		loadConfig(targetfile)
+		if(config["audioService"]=="pulse"):
+			try:
+					#global icon
+					icon = trayIcon(os.path.join(iconsPath,iconCon_tray))
+					time.sleep(3)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
+					midi_in = rtmidi.MidiIn()
+					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",appConfig))
+					t.start()
+					icon.run()
+			except:
+					logging.exception("Error with rtmidi")
+					sys.exit("Error, check log")  
+		elif(config["audioService"]=="alsa"):
+				try:
+						midi_in = rtmidi.MidiIn()
+						execution(midi_in,"alsa",appConfig)
+				except:
+						logging.exception("Error with rtmidi")
+						sys.exit("Error, check log")
+		else:
+				print("Invalid audioService , check config.json")
+				sys.exit()
+	
+ 
 	
 
 if __name__== "__main__":
