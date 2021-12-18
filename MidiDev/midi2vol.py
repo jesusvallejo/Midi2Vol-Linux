@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 import os
 import rtmidi
@@ -74,8 +75,6 @@ def mizu():
 
 def trayIcon(icon_img):
 	global icon
-	width=12
-	height=12
 	image=Image.open(icon_img)
 	icon=pystray.Icon(filename, image)
 	return icon
@@ -86,7 +85,8 @@ def trayIcon(icon_img):
 def sendmessage(status):
 	if(noNotify):
 		return
-	text=''
+
+	global iconCon,iconDis,iconConTray,iconDisTray
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
 	iconConTray = os.path.join(iconsPath,iconCon_tray)
@@ -105,7 +105,6 @@ def sendmessage(status):
 		img = iconDis
 		if(elementaryOS):
 			img= os.path.splitext(iconDis_img)[0]
-
 	subprocess.Popen(["notify-send", "-i", img, filename, text])
 	return
 
@@ -132,19 +131,21 @@ def nanoIsConnected(midi_in):                 #if nano is connected returns posi
 
 
 def execution(midi_in,sinkType,config):
+	global iconCon,iconDis
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
 	oldVolumeRaw = -1
 	paready = False
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
 		while (nanoIsConnected(midi_in) != -1):
+			global reported
 			reported=False
 			midiMessage= midi_in.get_message()
 			if (midiMessage): 										# if rtmidi gives None as a message , sleep the thread to avoid overloading cpu
-	 	 		message,time_stamp = midiMessage					# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
+	 	 		message = midiMessage[0]					# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
 	 	 		applicationRaw=message[1]					        # gives option to change volume of source ex: Spotify , Chrome, etc.
 	  			volumeRaw = message[2] 								# Message is an array in wich the third argument is the value of the potentiometer slider from 0 to 127
-	  			if (volumeRaw != oldVolumeRaw): 						# check if slider positon has changed
+	  			if (volumeRaw > oldVolumeRaw+1 or volumeRaw < oldVolumeRaw-1): 						# check if slider positon has changed
 	  				oldVolumeRaw= volumeRaw 						#update value for next iteration
 	  				if(sinkType=="alsa"):							# if alsa is chosen values go from 0 to 100
 	  					volume = math.floor((volumeRaw/3)*2.38)
@@ -161,13 +162,13 @@ def execution(midi_in,sinkType,config):
 	  					else:
 	  						logging.warning('llamada a pulse')	 					#if PulseAudio server is ready change volume with pulse
 	  						pulseSink(midi_in,applicationRaw,volumeRaw,config)
-			time.sleep(0.01)
+			time.sleep(0.005)
 	logging.error('executionError: could find nano. slider midi interface')
 	sendmessage('disconnected')
 	if (midi_in.is_port_open()):
 		midi_in.close_port()
 	while (nanoIsConnected(midi_in)==-1):
-		time.sleep(0.2) # to not overflow the recursion stack
+		time.sleep(0.5) # to not overflow the recursion stack
 	execution(midi_in,sinkType,config)
 
 
@@ -180,6 +181,7 @@ def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
 				if (hex(applicationRaw)== default['AppRaw']):
 					pulseAllSink(volume,pulse)
 				else:
+					logging.warning('App Volume selected:%s'%(hex(applicationRaw)))
 					pulseApp(volume,pulse,applicationRaw,config)
 
 def pulseAllSink(volume,pulse):
@@ -198,7 +200,7 @@ def pulseApp(volume,pulse,applicationRaw,config):
 		   			sinkVolume = source.volume
 		   			sinkVolume.value_flat = volume
 		   			pulse.volume_set(source,sinkVolume)
-		   			logging.warning('Volume %d set for application %s'%(volume*100,app['name']))
+		   			logging.warning('Volume %d set for application %s: %s'%(volume*100,app['name'],hex(applicationRaw)))
 		   			break
 
 def main():
@@ -208,7 +210,8 @@ def main():
 		targetfile = os.path.join(defaultPath,defaultConfigFile)
 		for arg in argv:
 			if(arg == '--noicon'):
-				noNotify = True
+				global noNotify
+				noNotify= True
 			if(arg == '--bento'):
 				bento()
 			if(arg == '--wavez'):
@@ -253,7 +256,7 @@ def main():
 				try:
 					global icon
 					icon = trayIcon(os.path.join(iconsPath,iconCon_tray))
-					time.sleep(10)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
+					time.sleep(3)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
 					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",config))
 					t.start()
@@ -279,72 +282,4 @@ def main():
 
 if __name__== "__main__":
   	main()
-
-
-
-"""
-To launch on boot create a file called midi2vol.sh
-and edit with(where USER is your user name, And -X is either -a for Alsa or -p for Pulse edit accordingly): 
-
-#!/bin/bash
-sleep 5 &&  python3 /home/USER/MidiDev/midi2vol.py -X |&  tee -a /home/USER/MidiDev/midi2vol.log;
-
-Then crontab -e
-
-@reboot bash /home/jesus/MidiDev/midi2vol.sh
-
-And last add your user to the audio group:
-
-sudo usermod -a -G audio USER
-
-PS: False(I could not make it work as a service, still working on it.)
-    After some time i figured out the problem was not running the service as the logged user so:
-
-    Add USER to audio and pulse groups:
-    sudo usermod -a -G audio USER (ex: sudo usermod -a -G audio jesus)
-    sudo usermod -a -G pulse USER (ex: sudo usermod -a -G pulse jesus)
-
-    Add this file
-
-    sudo nano /etc/systemd/system/midi2vol.service
-
-    fill with:
-    --------------------------------     
-    [Unit]
-	Description=midi2vol service.
-
-	[Service]
-	User=USER
-	Type=simple
-	ExecStart=/usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
-
-	[Install]
-	WantedBy=multi-user.target
-    --------------------------------
-    EX:   (NOTE IN THE EXAMPLE -d IS ACTIVE, THIS ENABLES LOGGING, REMEMBER CHANGING THE PATH ON THE CODE OR IT WONT HAVE RIGHTS TO DO SO)
-    --------------------------------
-    [Unit]
-	Description=midi2vol service.
-
-	[Service]
-	User=jesus
-	Type=simple
-	ExecStart=/usr/bin/python3 /home/jesus/MidiDev/midi2vol.py -p -d
-
-
-	[Install]
-	WantedBy=multi-user.target
-    --------------------------------
-	
-    sudo systemctl daemon-reload
-    sudo systemctl start midi2vol.service 
-    sudo systemctl status midi2vol.service (if everything ok continue)
-    sudo systemctl enable midi2vol.service (this makes it run each boot)
-
-    If you are on a Ubuntu distro(or based on it ex: elementary os), you can make it easier by System settings/Applications/Startup/+ and add to
-    box 'Type in a custom command' and type   /usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
-
-
-
-
-"""
+   
