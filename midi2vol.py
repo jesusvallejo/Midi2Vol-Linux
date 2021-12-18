@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 import os
 import rtmidi
@@ -13,15 +14,19 @@ import subprocess
 import shutil
 from datetime import datetime
 import pystray
+from pystray import MenuItem as MenuItem
 from PIL import Image, ImageDraw
+
 
 # paths
 defaultPath=os.path.dirname(os.path.realpath(__file__)) #  to force the location os.path.expanduser('~/MidiDev/')
 eOS_iconPath=os.path.expanduser('~/.local/share/icons/')
 iconsPath=os.path.join(defaultPath,'icons')
 
+
 # filenames
 filename=os.path.splitext(os.path.basename(__file__))[0]
+defaultAppConfigFile='appConfig.json'
 defaultConfigFile='config.json'
 defaultLogginFile=filename+'.log'# to force a logging name 'midi2vol.log'
 iconCon_img='NanoSlider.png'
@@ -29,11 +34,23 @@ iconDis_img='NanoSliderDis.png'
 iconCon_tray='TrayWhiteIconCon.png'
 iconDis_tray='TrayWhiteIconDis.png'
 
+# Default json
+appConfigJson = """ [
+    {"name": "Default","AppRaw": "0x3e","PulseName": "default"},
+    {"name": "Spotify","AppRaw": "0x3f","PulseName": "Spotify"},
+    {"name": "Discord","AppRaw": "0x40","PulseName": "playStream"},
+    {"name": "Google Chrome","AppRaw": "0x41","PulseName": "Playback"},
+    {"name": "Firefox","AppRaw": "0x41","PulseName": "AudioStream"}
+]"""
+configJson = """  {
+    "NotifyStatus": "true",
+    "trayBarIcon": "default",
+    "audioService":"pulse"
+  } """
 # flags
 elementaryOS=False
 noNotify = False
-
-
+SHOULD_TERMINATE = False
 
 def eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img):
 	global elementaryOS
@@ -74,19 +91,28 @@ def mizu():
 
 def trayIcon(icon_img):
 	global icon
-	width=12
-	height=12
 	image=Image.open(icon_img)
-	icon=pystray.Icon(filename, image)
+	menu = (pystray.MenuItem('Exit', lambda:endProgram()),)
+	icon=pystray.Icon(filename, image,filename,menu)
 	return icon
 
-
-
+def endProgram():
+	global icon ,t,SHOULD_TERMINATE
+	if( threading.current_thread() == threading.main_thread()):
+		print("main")
+	else:
+		print("not main")
+	SHOULD_TERMINATE = True
+	t.join()
+	icon.visible = False
+	icon.stop()
+	sys.exit("midi stopped\n")
 
 def sendmessage(status):
 	if(noNotify):
 		return
-	text=''
+
+	global iconCon,iconDis,iconConTray,iconDisTray
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
 	iconConTray = os.path.join(iconsPath,iconCon_tray)
@@ -105,9 +131,9 @@ def sendmessage(status):
 		img = iconDis
 		if(elementaryOS):
 			img= os.path.splitext(iconDis_img)[0]
-
 	subprocess.Popen(["notify-send", "-i", img, filename, text])
 	return
+
 
 def openNano(midi_in):
     count=nanoIsConnected(midi_in) # returns true if port is correctly opened, false if not
@@ -118,7 +144,8 @@ def openNano(midi_in):
     else:
     	logging.error('openNanoError: could not find nano. slider')
     	return False
-
+ 
+ 
 def nanoIsConnected(midi_in):                 #if nano is connected returns position in list, if not returns -1
 	count = 0
 	for port_name in midi_in.get_ports():
@@ -131,20 +158,22 @@ def nanoIsConnected(midi_in):                 #if nano is connected returns posi
 	return -1
 
 
-def execution(midi_in,sinkType,config):
+def execution(midi_in,sinkType,appConfig):
+	global iconCon,iconDis,SHOULD_TERMINATE
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
 	oldVolumeRaw = -1
-	paready = False
+	paready = False												    
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
-		while (nanoIsConnected(midi_in) != -1):
+		while (nanoIsConnected(midi_in) != -1 and SHOULD_TERMINATE == False):
+			global reported
 			reported=False
 			midiMessage= midi_in.get_message()
 			if (midiMessage): 										# if rtmidi gives None as a message , sleep the thread to avoid overloading cpu
-	 	 		message,time_stamp = midiMessage					# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
+	 	 		message = midiMessage[0]							# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
 	 	 		applicationRaw=message[1]					        # gives option to change volume of source ex: Spotify , Chrome, etc.
 	  			volumeRaw = message[2] 								# Message is an array in wich the third argument is the value of the potentiometer slider from 0 to 127
-	  			if (volumeRaw != oldVolumeRaw): 						# check if slider positon has changed
+	  			if (volumeRaw > oldVolumeRaw+1 or volumeRaw < oldVolumeRaw-1): 						# check if slider positon has changed
 	  				oldVolumeRaw= volumeRaw 						#update value for next iteration
 	  				if(sinkType=="alsa"):							# if alsa is chosen values go from 0 to 100
 	  					volume = math.floor((volumeRaw/3)*2.38)
@@ -159,56 +188,107 @@ def execution(midi_in,sinkType,config):
 	  						else:
 	  							logging.warning('PulseAudio server is not avaible')
 	  					else:
-	  						logging.warning('llamada a pulse')	 					#if PulseAudio server is ready change volume with pulse
-	  						pulseSink(midi_in,applicationRaw,volumeRaw,config)
-			time.sleep(0.01)
+	  						logging.warning('llamada a pulse')	 	# If PulseAudio server is ready change volume with pulse
+	  						pulseSink(midi_in,applicationRaw,volumeRaw,appConfig)
+         
+			time.sleep(0.01)  										# Sleep thread for a while
+	if(SHOULD_TERMINATE==True):										# Exit has been called kill my self
+		sys.exit('killing thread')
 	logging.error('executionError: could find nano. slider midi interface')
 	sendmessage('disconnected')
-	if (midi_in.is_port_open()):
+ 
+	if (midi_in.is_port_open()):									# Close midi port
 		midi_in.close_port()
-	while (nanoIsConnected(midi_in)==-1):
-		time.sleep(0.2) # to not overflow the recursion stack
-	execution(midi_in,sinkType,config)
+	while (nanoIsConnected(midi_in)==-1):							# Actively poll to detect nano slider reconnection
+		time.sleep(0.5) 											# To not overflow the recursion stack
+	execution(midi_in,sinkType,appConfig)								# Nano is now present launch thread
 
 
-
-
-def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
+def pulseSink(MidiIn,applicationRaw,volumeRaw,appConfig):   			# Checks midi hex against the json
 	volume = math.floor((volumeRaw/3)*2.38)/100 
 	with pulsectl.Pulse('event-printer') as pulse:
-				default = config['default']
+				default = appConfig[0]
 				if (hex(applicationRaw)== default['AppRaw']):
 					pulseAllSink(volume,pulse)
 				else:
-					pulseApp(volume,pulse,applicationRaw,config)
+					logging.warning('App Volume selected:%s'%(hex(applicationRaw)))
+					pulseApp(volume,pulse,applicationRaw,appConfig)
 
-def pulseAllSink(volume,pulse):
+
+def pulseAllSink(volume,pulse):											# Changes all output sinks volume
 	for sink in pulse.sink_list():
 		pulse.volume_set_all_chans(sink, volume)
 	logging.warning('Volume %d set for all sinks'%(volume*100))
 
-def pulseApp(volume,pulse,applicationRaw,config):
-	for app in config['Apps']:
+
+def pulseApp(volume,pulse,applicationRaw,appConfig):						# Controls per app volume using pulse
+	for app in appConfig:
 		if(app['AppRaw'] == hex(applicationRaw)):
 			if(pulse.sink_input_list()==[]):
 				logging.warning('no apps playing audio')
 			for source in pulse.sink_input_list():
 		   		name = source.name
-		   		if (name == app['PulseName']): # if sink input exists
+		   		if (name == app['PulseName']): 							# if sink input exists
 		   			sinkVolume = source.volume
 		   			sinkVolume.value_flat = volume
 		   			pulse.volume_set(source,sinkVolume)
-		   			logging.warning('Volume %d set for application %s'%(volume*100,app['name']))
+		   			logging.warning('Volume %d set for application %s: %s'%(volume*100,app['name'],hex(applicationRaw)))
 		   			break
+    
+    
+def loadAppConfig(targetfile):
+	try:
+		with open(targetfile) as f:
+			try:
+				global	appConfig
+				appConfig = json.load(f)
+				logging.warning('%s correctly loaded'%(targetfile))
+			except:
+				os.rename(os.path.realpath(targetfile), os.path.realpath(targetfile)+".bak")
+				f = open(os.path.realpath(targetfile), "w")
+				logging.warning('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
+				f.write(appConfigJson)
+				f.close()
+				main()
+	except:
+		logging.warning('Error loading %s, will create a new one'%(targetfile))
+		f= open(targetfile,"w+")
+		f.write(appConfigJson)
+		f.close()
+		main()
+  
+  
+def loadConfig(targetfile):
+	try:
+		with open(targetfile) as f:
+			try:
+				global	config
+				config = json.load(f)
+				logging.warning('%s correctly loaded'%(targetfile))
+			except:
+				os.rename(os.path.realpath(targetfile), os.path.realpath(targetfile)+".bak")
+				f = open(os.path.realpath(targetfile), "w")
+				logging.warning('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
+				f.write(configJson)
+				f.close()
+				main()
+	except:
+		logging.warning('Error loading %s, will create a new one'%(targetfile))
+		f= open(targetfile,"w+")
+		f.write(configJson)
+		f.close()
+		main()
 
 def main():
+	global appConfig , config , t
 	argv = sys.argv
-	if (len(argv)>1):
+	if (len(argv)>1): 													# console mode
 		count=0
-		targetfile = os.path.join(defaultPath,defaultConfigFile)
+		targetfile = os.path.join(defaultPath,defaultAppConfigFile)
 		for arg in argv:
 			if(arg == '--noicon'):
-				noNotify = True
+				global noNotify
+				noNotify= True
 			if(arg == '--bento'):
 				bento()
 			if(arg == '--wavez'):
@@ -229,35 +309,22 @@ def main():
 				logging.warning(targetfile)
 			count = count+1
 
-		try:
-			with open(targetfile) as f:
-				try:
-					config = json.load(f)
-					logging.warning('%s correctly loaded'%(targetfile))
-				except:
-					os.rename(os.path.realpath(targetfile), os.path.realpath(targetfile)+".bak")
-					f = open(os.path.realpath(targetfile), "w")
-					logging.warning('Error loading %s,backing up old one, creating new one(check parsing)'%(targetfile))
-					f.write("{\"default\": {\"AppRaw\":\"0x3e\"},\"Apps\":[{\"name\": \"None\",\"AppRaw\": \"0x00\",\"PulseName\": \"None\"}]}")
-					f.close()
-					main()
-		except:
-			logging.warning('Error loading %s, will create a new one'%(targetfile))
-			f= open(targetfile,"w+")
-			f.write("{\"default\": {\"AppRaw\":\"0x3e\"},\"Apps\":[{\"name\": \"None\",\"AppRaw\": \"0x00\",\"PulseName\": \"None\"}]}")
-			f.close()
-			main()
+		loadAppConfig(targetfile)
 
 		for arg in argv:
 			if(arg== "--pulse" or arg== "-p"):
 				try:
 					global icon
 					icon = trayIcon(os.path.join(iconsPath,iconCon_tray))
-					time.sleep(10)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
+					time.sleep(3)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
-					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",config))
+					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",appConfig))
+					t.daemon = True  
 					t.start()
 					icon.run()
+					
+					
+
 				except:
 					logging.exception("Error with rtmidi")
 					sys.exit("Error, check log")  
@@ -265,86 +332,56 @@ def main():
 			elif(arg== "--alsa" or arg== "-a"):
 				try:
 					midi_in = rtmidi.MidiIn()
-					execution(midi_in,"alsa",config)
+					execution(midi_in,"alsa",appConfig)
 				except:
 					logging.exception("Error with rtmidi")
-					sys.exit("Error, check log")  
+					sys.exit("Error, check log") 
+			else:
+				print("Please call me with a valid argument")
+				print("Unknown argument, For alsa sink use arguments --alsa/-a or --pulse/-p for pulse sink")
+				sys.exit() 
 		
-
 	else:
-		print("Please call me with a valid argument")
-		print("Unknown agument, For alsa sink use aguments --alsa/-a or --pulse/-p for pulse sink")
-		sys.exit()  
+		targetfile = os.path.join(defaultPath,defaultAppConfigFile)# AppConfig file
+		loadAppConfig(targetfile)
+		targetfile = os.path.join(defaultPath,defaultConfigFile)# AppConfig file
+		loadConfig(targetfile)
+		if(config["NotifyStatus"]=="false"):
+			noNotify=true
+		if(config["notIcon"]== "mizu"):
+			mizu()
+		if(config["notIcon"]== "bento"):
+			bento()
+		if(config["notIcon"]== "wavez"):
+			wavez()		
+		if(config["audioService"]=="pulse"):
+			try:
+					
+					icon = trayIcon(os.path.join(iconsPath,iconCon_tray))
+					time.sleep(3)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
+					midi_in = rtmidi.MidiIn()
+					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",appConfig))
+					t.start()
+					icon.run()
+					
+
+			except:
+					logging.exception("Error with rtmidi")
+					sys.exit("Error, check log")  
+		elif(config["audioService"]=="alsa"):
+				try:
+						midi_in = rtmidi.MidiIn()
+						execution(midi_in,"alsa",appConfig)
+				except:
+						logging.exception("Error with rtmidi")
+						sys.exit("Error, check log")
+		else:
+				print("Invalid audioService , check config.json")
+				sys.exit()
+	
+ 
 	
 
 if __name__== "__main__":
   	main()
-
-
-
-"""
-To launch on boot create a file called midi2vol.sh
-and edit with(where USER is your user name, And -X is either -a for Alsa or -p for Pulse edit accordingly): 
-
-#!/bin/bash
-sleep 5 &&  python3 /home/USER/MidiDev/midi2vol.py -X |&  tee -a /home/USER/MidiDev/midi2vol.log;
-
-Then crontab -e
-
-@reboot bash /home/jesus/MidiDev/midi2vol.sh
-
-And last add your user to the audio group:
-
-sudo usermod -a -G audio USER
-
-PS: False(I could not make it work as a service, still working on it.)
-    After some time i figured out the problem was not running the service as the logged user so:
-
-    Add USER to audio and pulse groups:
-    sudo usermod -a -G audio USER (ex: sudo usermod -a -G audio jesus)
-    sudo usermod -a -G pulse USER (ex: sudo usermod -a -G pulse jesus)
-
-    Add this file
-
-    sudo nano /etc/systemd/system/midi2vol.service
-
-    fill with:
-    --------------------------------     
-    [Unit]
-	Description=midi2vol service.
-
-	[Service]
-	User=USER
-	Type=simple
-	ExecStart=/usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
-
-	[Install]
-	WantedBy=multi-user.target
-    --------------------------------
-    EX:   (NOTE IN THE EXAMPLE -d IS ACTIVE, THIS ENABLES LOGGING, REMEMBER CHANGING THE PATH ON THE CODE OR IT WONT HAVE RIGHTS TO DO SO)
-    --------------------------------
-    [Unit]
-	Description=midi2vol service.
-
-	[Service]
-	User=jesus
-	Type=simple
-	ExecStart=/usr/bin/python3 /home/jesus/MidiDev/midi2vol.py -p -d
-
-
-	[Install]
-	WantedBy=multi-user.target
-    --------------------------------
-	
-    sudo systemctl daemon-reload
-    sudo systemctl start midi2vol.service 
-    sudo systemctl status midi2vol.service (if everything ok continue)
-    sudo systemctl enable midi2vol.service (this makes it run each boot)
-
-    If you are on a Ubuntu distro(or based on it ex: elementary os), you can make it easier by System settings/Applications/Startup/+ and add to
-    box 'Type in a custom command' and type   /usr/bin/python3 /home/USER/MidiDev/midi2vol.py -p
-
-
-
-
-"""
+   
