@@ -14,6 +14,7 @@ import subprocess
 import shutil
 from datetime import datetime
 import pystray
+from pystray import MenuItem as MenuItem
 from PIL import Image, ImageDraw
 
 
@@ -49,7 +50,7 @@ configJson = """  {
 # flags
 elementaryOS=False
 noNotify = False
-
+SHOULD_TERMINATE = False
 
 def eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img):
 	global elementaryOS
@@ -91,9 +92,21 @@ def mizu():
 def trayIcon(icon_img):
 	global icon
 	image=Image.open(icon_img)
-	icon=pystray.Icon(filename, image)
+	menu = (pystray.MenuItem('Exit', lambda:endProgram()),)
+	icon=pystray.Icon(filename, image,filename,menu)
 	return icon
 
+def endProgram():
+	global icon ,t,SHOULD_TERMINATE
+	if( threading.current_thread() == threading.main_thread()):
+		print("main")
+	else:
+		print("not main")
+	SHOULD_TERMINATE = True
+	t.join()
+	icon.visible = False
+	icon.stop()
+	sys.exit("midi stopped\n")
 
 def sendmessage(status):
 	if(noNotify):
@@ -146,13 +159,13 @@ def nanoIsConnected(midi_in):                 #if nano is connected returns posi
 
 
 def execution(midi_in,sinkType,appConfig):
-	global iconCon,iconDis
+	global iconCon,iconDis,SHOULD_TERMINATE
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
 	oldVolumeRaw = -1
 	paready = False												    
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
-		while (nanoIsConnected(midi_in) != -1):
+		while (nanoIsConnected(midi_in) != -1 and SHOULD_TERMINATE == False):
 			global reported
 			reported=False
 			midiMessage= midi_in.get_message()
@@ -179,7 +192,8 @@ def execution(midi_in,sinkType,appConfig):
 	  						pulseSink(midi_in,applicationRaw,volumeRaw,appConfig)
          
 			time.sleep(0.01)  										# Sleep thread for a while
-   
+	if(SHOULD_TERMINATE==True):										# Exit has been called kill my self
+		sys.exit('killing thread')
 	logging.error('executionError: could find nano. slider midi interface')
 	sendmessage('disconnected')
  
@@ -266,7 +280,7 @@ def loadConfig(targetfile):
 		main()
 
 def main():
-	global appConfig , config
+	global appConfig , config , t
 	argv = sys.argv
 	if (len(argv)>1): 													# console mode
 		count=0
@@ -305,8 +319,12 @@ def main():
 					time.sleep(3)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
 					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",appConfig))
+					t.daemon = True  
 					t.start()
 					icon.run()
+					
+					
+
 				except:
 					logging.exception("Error with rtmidi")
 					sys.exit("Error, check log")  
@@ -328,15 +346,25 @@ def main():
 		loadAppConfig(targetfile)
 		targetfile = os.path.join(defaultPath,defaultConfigFile)# AppConfig file
 		loadConfig(targetfile)
+		if(config["NotifyStatus"]=="false"):
+			noNotify=true
+		if(config["notIcon"]== "mizu"):
+			mizu()
+		if(config["notIcon"]== "bento"):
+			bento()
+		if(config["notIcon"]== "wavez"):
+			wavez()		
 		if(config["audioService"]=="pulse"):
 			try:
-					#global icon
+					
 					icon = trayIcon(os.path.join(iconsPath,iconCon_tray))
 					time.sleep(3)	# SEEMS TO HELP WITH APPS PROBLEM(PULSEAUDIO SEES ALL SINKS, BUT DOESNT SINK INPUTS, RESULTING IN PER APP CONTROL NOT WORKING) 
 					midi_in = rtmidi.MidiIn()
 					t=threading.Thread(name = 'midiExecution',target = execution,args =(midi_in,"pulse",appConfig))
 					t.start()
 					icon.run()
+					
+
 			except:
 					logging.exception("Error with rtmidi")
 					sys.exit("Error, check log")  

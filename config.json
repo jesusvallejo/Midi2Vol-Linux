@@ -1,5 +1,6 @@
 {
     "NotifyStatus": "true",
     "trayBarIcon": "default",
+    "notIcon": "mizu",
     "audioService":"pulse"
   }

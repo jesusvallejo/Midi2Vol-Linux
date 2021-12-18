@@ -1,8 +1,0 @@
-[
-    {"name": "Default","AppRaw": "0x3e","PulseName": "default"},
-    {"name": "Spotify","AppRaw": "0x3f","PulseName": "Spotify"},
-    {"name": "Discord","AppRaw": "0x40","PulseName": "playStream"},
-    {"name": "Google Chrome","AppRaw": "0x41","PulseName": "Playback"},
-    {"name": "Firefox","AppRaw": "0x41","PulseName": "AudioStream"}
-]
-    
