@@ -16,10 +16,12 @@ from datetime import datetime
 import pystray
 from PIL import Image, ImageDraw
 
+
 # paths
 defaultPath=os.path.dirname(os.path.realpath(__file__)) #  to force the location os.path.expanduser('~/MidiDev/')
 eOS_iconPath=os.path.expanduser('~/.local/share/icons/')
 iconsPath=os.path.join(defaultPath,'icons')
+
 
 # filenames
 filename=os.path.splitext(os.path.basename(__file__))[0]
@@ -30,10 +32,10 @@ iconDis_img='NanoSliderDis.png'
 iconCon_tray='TrayWhiteIconCon.png'
 iconDis_tray='TrayWhiteIconDis.png'
 
+
 # flags
 elementaryOS=False
 noNotify = False
-
 
 
 def eOSNotification(defaultPath,eOS_iconPath,iconCon_img,iconDis_img):
@@ -80,8 +82,6 @@ def trayIcon(icon_img):
 	return icon
 
 
-
-
 def sendmessage(status):
 	if(noNotify):
 		return
@@ -108,6 +108,7 @@ def sendmessage(status):
 	subprocess.Popen(["notify-send", "-i", img, filename, text])
 	return
 
+
 def openNano(midi_in):
     count=nanoIsConnected(midi_in) # returns true if port is correctly opened, false if not
     if (count!=-1):
@@ -117,7 +118,8 @@ def openNano(midi_in):
     else:
     	logging.error('openNanoError: could not find nano. slider')
     	return False
-
+ 
+ 
 def nanoIsConnected(midi_in):                 #if nano is connected returns position in list, if not returns -1
 	count = 0
 	for port_name in midi_in.get_ports():
@@ -135,14 +137,14 @@ def execution(midi_in,sinkType,config):
 	iconCon = os.path.join(iconsPath,iconCon_img)
 	iconDis = os.path.join(iconsPath,iconDis_img)
 	oldVolumeRaw = -1
-	paready = False
+	paready = False												    
 	if (openNano(midi_in)): 										# if connected to nano , check if there's a message 
 		while (nanoIsConnected(midi_in) != -1):
 			global reported
 			reported=False
 			midiMessage= midi_in.get_message()
 			if (midiMessage): 										# if rtmidi gives None as a message , sleep the thread to avoid overloading cpu
-	 	 		message = midiMessage[0]					# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
+	 	 		message = midiMessage[0]							# rtmidi lib , passes a tuple [midiMessage , timeStamp], we need the message
 	 	 		applicationRaw=message[1]					        # gives option to change volume of source ex: Spotify , Chrome, etc.
 	  			volumeRaw = message[2] 								# Message is an array in wich the third argument is the value of the potentiometer slider from 0 to 127
 	  			if (volumeRaw > oldVolumeRaw+1 or volumeRaw < oldVolumeRaw-1): 						# check if slider positon has changed
@@ -160,21 +162,22 @@ def execution(midi_in,sinkType,config):
 	  						else:
 	  							logging.warning('PulseAudio server is not avaible')
 	  					else:
-	  						logging.warning('llamada a pulse')	 					#if PulseAudio server is ready change volume with pulse
+	  						logging.warning('llamada a pulse')	 	# If PulseAudio server is ready change volume with pulse
 	  						pulseSink(midi_in,applicationRaw,volumeRaw,config)
-			time.sleep(0.005)
+         
+			time.sleep(0.01)  										# Sleep thread for a while
+   
 	logging.error('executionError: could find nano. slider midi interface')
 	sendmessage('disconnected')
-	if (midi_in.is_port_open()):
+ 
+	if (midi_in.is_port_open()):									# Close midi port
 		midi_in.close_port()
-	while (nanoIsConnected(midi_in)==-1):
-		time.sleep(0.5) # to not overflow the recursion stack
-	execution(midi_in,sinkType,config)
+	while (nanoIsConnected(midi_in)==-1):							# Actively poll to detect nano slider reconnection
+		time.sleep(0.5) 											# To not overflow the recursion stack
+	execution(midi_in,sinkType,config)								# Nano is now present launch thread
 
 
-
-
-def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
+def pulseSink(MidiIn,applicationRaw,volumeRaw,config):   			# Checks midi hex against the json
 	volume = math.floor((volumeRaw/3)*2.38)/100 
 	with pulsectl.Pulse('event-printer') as pulse:
 				default = config['default']
@@ -184,24 +187,27 @@ def pulseSink(MidiIn,applicationRaw,volumeRaw,config):
 					logging.warning('App Volume selected:%s'%(hex(applicationRaw)))
 					pulseApp(volume,pulse,applicationRaw,config)
 
-def pulseAllSink(volume,pulse):
+
+def pulseAllSink(volume,pulse):											# Changes all output sinks volume
 	for sink in pulse.sink_list():
 		pulse.volume_set_all_chans(sink, volume)
 	logging.warning('Volume %d set for all sinks'%(volume*100))
 
-def pulseApp(volume,pulse,applicationRaw,config):
+
+def pulseApp(volume,pulse,applicationRaw,config):						# Controls per app volume using pulse
 	for app in config['Apps']:
 		if(app['AppRaw'] == hex(applicationRaw)):
 			if(pulse.sink_input_list()==[]):
 				logging.warning('no apps playing audio')
 			for source in pulse.sink_input_list():
 		   		name = source.name
-		   		if (name == app['PulseName']): # if sink input exists
+		   		if (name == app['PulseName']): 							# if sink input exists
 		   			sinkVolume = source.volume
 		   			sinkVolume.value_flat = volume
 		   			pulse.volume_set(source,sinkVolume)
 		   			logging.warning('Volume %d set for application %s: %s'%(volume*100,app['name'],hex(applicationRaw)))
 		   			break
+
 
 def main():
 	argv = sys.argv
@@ -273,10 +279,9 @@ def main():
 					logging.exception("Error with rtmidi")
 					sys.exit("Error, check log")  
 		
-
 	else:
 		print("Please call me with a valid argument")
-		print("Unknown agument, For alsa sink use aguments --alsa/-a or --pulse/-p for pulse sink")
+		print("Unknown argument, For alsa sink use arguments --alsa/-a or --pulse/-p for pulse sink")
 		sys.exit()  
 	
 
