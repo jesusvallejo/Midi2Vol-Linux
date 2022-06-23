@@ -99,8 +99,13 @@ git clone https://github.com/jesusvallejo/Midi2Vol-Linux/
 ```
 Install requirements
 ```
+
+sudo apt-get install libasound2-dev
+sudo apt-get install libjack-dev
+sudo apt install libappindicator3-dev
+
 cd /home/USER/MidiDev/
-pip3 install requirements.txt
+pip3 install -r requirements.txt
 ```
 To launch on boot create a file called midi2vol.sh
 and edit with(where USER is your user name, And -X is either -a for Alsa or -p for Pulse edit accordingly):
